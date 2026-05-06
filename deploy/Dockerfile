@@ -3,5 +3,5 @@
 # build-time changes to /etc/apache2/mods-enabled aren't sticking through
 # to runtime).
 
-FROM librebooking/librebooking:4.3.0
+FROM librebooking/librebooking:5.0.2
 USER root

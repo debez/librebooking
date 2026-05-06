@@ -4,7 +4,7 @@ Records the upstream LibreBooking image tag each tenant runs, plus any active wo
 
 ## Current pin
 
-- **Upstream image**: `librebooking/librebooking:4.3.0`
+- **Upstream image**: `librebooking/librebooking:5.0.2`
 - **Workaround active**: yes — Custom Start Command on each Railway service removes `mpm_event` and `mpm_worker` symlinks from `/etc/apache2/mods-enabled/` at runtime
 - **Tracking**: file an issue at https://github.com/LibreBooking/docker/issues and link it here
 
@@ -30,7 +30,8 @@ The `Dockerfile` itself just sets `USER root` so the runtime cleanup has permiss
 
 | Date       | Tenant         | Tag    | Workaround | Notes |
 |------------|----------------|--------|------------|-------|
-| 2026-05-06 | tenant-pilot-01 | 4.3.0  | Runtime MPM fix via Custom Start Command | Initial pilot deploy. 5.0.2 has same MPM bug. |
+| 2026-05-06 | tenant-pilot-01 | 4.3.0  | Runtime MPM fix via Custom Start Command | Initial pilot deploy. |
+| 2026-05-06 | tenant-pilot-01 | 5.0.2  | Runtime MPM fix via Custom Start Command | Bumped to latest stable; same MPM workaround applies. |
 
 ## Upgrade procedure
 
