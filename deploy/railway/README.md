@@ -35,8 +35,9 @@ Empty project, named `tenant-<slug>`.
 
 - **+ Create** → **Empty Service**
 - Settings → Source → **GitHub Repo** → connect `debez/librebooking`
-- **Dockerfile path**: `deploy/Dockerfile`
 - **Branch**: `develop`
+- Settings → Build → **Builder**: Dockerfile (NOT Railpack)
+- Settings → Build → **Dockerfile Path**: `/deploy/Dockerfile`
 - Region → EU West (Amsterdam)
 - Rename service to `librebooking-web`
 - Volumes tab → **+ New Volume** → mount `/var/www/html/Web/uploads`, size 5 GB
@@ -56,22 +57,34 @@ LB_LOGGING_LEVEL=debug
 LB_LOGGING_SQL=false
 ```
 
-Hover over each `${{mysql.*}}` value in the UI to confirm it resolves to the actual value (not the literal string). If blank, the MySQL service name or var name is wrong.
+Hover over each `${{mysql.*}}` value in the UI to confirm it resolves to the actual value. If blank, the MySQL service name or var name is wrong.
 
-### 5. Custom domain
+### 5. Custom Start Command (REQUIRED — works around upstream MPM bug)
+
+Settings → Deploy → **Custom Start Command**:
+
+```bash
+bash -c 'rm -fv /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* 2>&1 || true; exec /usr/local/bin/entrypoint.sh apache2-foreground'
+```
+
+**Why**: the upstream `librebooking/librebooking` image ships with both `mpm_event` and `mpm_prefork` Apache modules enabled, which causes Apache to refuse to start with `AH00534: More than one MPM loaded`. We disable `mpm_event` and `mpm_worker` at runtime (build-time changes don't reliably stick through Railway's deploy pipeline), then run the original entrypoint chain.
+
+Remove this Custom Start Command and revert to default once upstream fixes the bug. See `CHANGELOG.md`.
+
+### 6. Custom domain
 
 - `librebooking-web` → Settings → Networking → Public Networking → **Generate Domain** (gives a temporary `*.up.railway.app` URL — useful for the initial install before DNS is wired)
 - Then add **Custom Domain** → `<slug>.<your-domain>`
 - Add CNAME at your DNS registrar pointing to Railway's provided target
 - Railway provisions Let's Encrypt automatically
 
-### 6. Run the LibreBooking installer
+### 7. Run the LibreBooking installer
 
 - Visit the live URL → the installer prompts for the `LB_INSTALL_PASSWORD`
 - Step through the installer (DB connection check, schema creation, admin account)
 - After install completes, **change `LB_LOGGING_LEVEL` from `debug` to `none`** to reduce log volume
 
-### 7. Smoke test
+### 8. Smoke test
 
 - Log in as admin, create a resource, create a booking
 - Trigger a redeploy of `librebooking-web` from the dashboard, confirm uploads + DB persist
@@ -94,3 +107,9 @@ git push origin develop
 ```
 
 Railway auto-deploys on push. Test on one tenant first, then roll forward to others.
+
+When upstream fixes the MPM bug:
+1. Test the new image tag without the Custom Start Command on a scratch Railway project
+2. If clean, remove the Custom Start Command from all tenants
+3. Update `deploy/Dockerfile` to bump the FROM tag
+4. Update `CHANGELOG.md`
