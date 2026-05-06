@@ -1,22 +1,21 @@
-# Sledgehammer fix for upstream MPM bug.
-# Disables mpm_event.so and mpm_worker.so by renaming the binaries, so even
-# if something at runtime tries to LoadModule them, the .so files aren't
-# present and Apache will skip them. Only mpm_prefork remains loadable.
-#
-# Also dumps diagnostic info so we can see what Apache modules are present.
+# Hypothesis: apache2 binary has an MPM statically compiled in, AND
+# mods-enabled has mpm_prefork symlink → duplicate MPM loaded.
+# Test: remove ALL mods-enabled MPM symlinks, let Apache use whatever's
+# compiled in. Dump apache2 -V to confirm.
 
 FROM librebooking/librebooking:4.3.0
 
 USER root
 
-RUN echo "=== Apache MPM .so binaries before disable ===" \
- && (ls /usr/lib/apache2/modules/ | grep -i mpm || echo "(none)") \
- && echo "=== Disabling mpm_event.so and mpm_worker.so ===" \
- && (mv /usr/lib/apache2/modules/mod_mpm_event.so /usr/lib/apache2/modules/mod_mpm_event.so.disabled 2>&1 && echo "mpm_event.so renamed") \
- && (mv /usr/lib/apache2/modules/mod_mpm_worker.so /usr/lib/apache2/modules/mod_mpm_worker.so.disabled 2>&1 && echo "mpm_worker.so renamed") \
- && echo "=== Apache MPM .so binaries after disable ===" \
- && (ls /usr/lib/apache2/modules/ | grep -i mpm || echo "(none)") \
- && echo "=== mods-enabled MPM symlinks ===" \
- && (ls -la /etc/apache2/mods-enabled/ | grep -i mpm || echo "(none)") \
- && echo "=== apache2ctl -t at build time ===" \
- && (apache2ctl -t 2>&1 || true)
+RUN echo "=== Before: mods-enabled MPM symlinks ===" \
+ && (ls /etc/apache2/mods-enabled/ | grep mpm || echo "(none)") \
+ && echo "=== Removing all MPM symlinks from mods-enabled ===" \
+ && rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf \
+ && echo "=== After: mods-enabled MPM symlinks ===" \
+ && (ls /etc/apache2/mods-enabled/ | grep mpm || echo "(none)") \
+ && echo "=== apache2 -V (shows compiled-in MPM) ===" \
+ && apache2 -V \
+ && echo "=== apache2ctl -t ===" \
+ && (apache2ctl -t 2>&1 || true) \
+ && echo "=== apache2ctl -M ===" \
+ && (apache2ctl -M 2>&1 | grep -i mpm || true)
